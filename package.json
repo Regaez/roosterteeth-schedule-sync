@@ -1,0 +1,17 @@
+{
+  "name": "rt-schedule",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node ./src"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^6.0.0",
+    "google-auth-library": "^1.6.1",
+    "moment": "^2.22.2",
+    "node-fetch": "^2.1.2"
+  }
+}
