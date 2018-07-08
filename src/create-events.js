@@ -49,11 +49,11 @@ const getId = (uuid, sponsor = false) => {
   return crypto.createHash('md5').update(id).digest('hex');
 }
 
-const defaultEventData = (item, sponsor = false) => {
+const defaultEventData = ({ uuid, attributes }, sponsor = false) => {
   return {
-    id: getId(item.uuid, sponsor),
-    summary: `${sponsor?'FIRST: ':''}${item.attributes.title}`,
-    description: formatDescription(item.attributes),
+    id: getId(uuid, sponsor),
+    summary: `${sponsor?'FIRST: ':''} ${attributes.show_title} - ${attributes.title}`,
+    description: formatDescription(attributes),
     transparency: 'transparent'
   }
 }
