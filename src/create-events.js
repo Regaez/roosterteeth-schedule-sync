@@ -54,7 +54,8 @@ const defaultEventData = ({ uuid, attributes }, sponsor = false) => {
     id: getId(uuid, sponsor),
     summary: `${sponsor?'FIRST: ':''} ${attributes.show_title} - ${attributes.title}`,
     description: formatDescription(attributes),
-    transparency: 'transparent'
+    transparency: 'transparent',
+    guestsCanSeeOtherGuests: false
   }
 }
 
