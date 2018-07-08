@@ -9,6 +9,8 @@ const getWeekSchedule = () => {
   // We can only make requests for one day at a time due to RT API restrictions
   const dailySchedules = [...Array(8)].map((item, i) => {
     const now = new Date();
+    // we start one day in the past to catch any events that may have been published
+    // after the application last ran, then check the upcoming week's schedule.
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i - 1)
     const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
 

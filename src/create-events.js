@@ -1,77 +1,14 @@
-const crypto = require('crypto');
-const moment = require('moment');
 const { getClient } = require('./oauth');
+const {
+  defaultEventData,
+  formatDescription,
+  getChannelName,
+  getCalendarId,
+  getEventTimes,
+  getId
+} = require('./helpers');
 const log = require('./logger');
 let client;
-
-const getChannelName = (slug = "") => {
-  return slug
-    .toLowerCase()
-    .replace(/(?:^|[\s-/])\w/g, (match) => {
-      return match.toUpperCase();
-    })
-    .replace(/[-]/g, ' ');
-};
-
-const getCalendarId = (slug = "") => {
-  switch (slug) {
-    case "rooster-teeth":
-      return process.env.CALENDAR_RT;
-    case "achievement-hunter":
-      return process.env.CALENDAR_AH;
-    case "funhaus":
-      return process.env.CALENDAR_FH;
-    case "screwattack":
-      return process.env.CALENDAR_SA;
-    case "cow-chop":
-      return process.env.CALENDAR_CC;
-    case "sugar-pine-7":
-      return process.env.CALENDAR_SP7;
-    case "game-attack":
-      return process.env.CALENDAR_GA;
-    case "the-know":
-      return process.env.CALENDAR_TK;
-    case "jt-music":
-      return process.env.CALENDAR_JT;
-    default:
-      return process.env.CALENDAR_ALL;
-  }
-};
-
-const formatDescription = ({ show_title, display_title, channel_slug, slug, description, length }) => {
-  const duration = moment.duration(length, 'seconds').humanize();
-
-  return `${getChannelName(channel_slug)}${show_title ? ": " + show_title : ''}\n${display_title}\nDuration: ${duration}\n\n${description}\n\nWatch video: ${process.env.RT_EPISODE_URL}/${slug}`;
-}
-
-const getId = (uuid, sponsor = false) => {
-  const id = sponsor ? uuid + 'sponsor' : uuid;
-  return crypto.createHash('md5').update(id).digest('hex');
-}
-
-const defaultEventData = ({ uuid, attributes }, sponsor = false) => {
-  return {
-    id: getId(uuid, sponsor),
-    summary: `${sponsor?'FIRST: ':''} ${attributes.show_title} - ${attributes.title}`,
-    description: formatDescription(attributes),
-    transparency: 'transparent',
-    guestsCanSeeOtherGuests: false
-  }
-}
-
-const getEventTimes = (timestamp, length) => {
-  const start = moment(timestamp);
-  const end = moment(timestamp).seconds(length);
-
-  return {
-    start: {
-      dateTime: start.toISOString()
-    },
-    end: {
-      dateTime: end.toISOString()
-    }
-  };
-};
 
 const eventExists = async (calendarId, eventId) => {
   const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${eventId}`;
@@ -79,130 +16,95 @@ const eventExists = async (calendarId, eventId) => {
     const res = await client.request({ url });
     return res.status === 200;
   } catch (err) {
-    return err.response.status === 200;
+    return false;
   }
 }
 
+const makeRequest = ({ url, data, eventType }) => {
+  return client.request({
+    method: 'POST',
+    url,
+    data
+  })
+  .then(() => log.info(`Created ${eventType} event: ${data.summary}`))
+  .catch(error => log.error({ message: `Failed to create ${eventType} event`, data, error }));
+}
+
 const createEvent = async (item) => {
-  let eventRequests = [];
+  const {
+    channel_slug,
+    public_golive_at,
+    length,
+    is_sponsors_only,
+    sponsor_golive_at
+  } = item.attributes;
 
-  const channelUrl = `https://www.googleapis.com/calendar/v3/calendars/${getCalendarId(item.attributes.channel_slug)}/events`;
-  const comboUrl = `https://www.googleapis.com/calendar/v3/calendars/${getCalendarId()}/events`;
+  const channelUrl = `https://www.googleapis.com/calendar/v3/calendars/${getCalendarId(channel_slug)}/events`;
+  const generalUrl = `https://www.googleapis.com/calendar/v3/calendars/${getCalendarId()}/events`;
 
-  if (!item.attributes.is_sponsors_only) {
-
-    const publicData = Object.assign({},
-      defaultEventData(item, false),
-      getEventTimes(item.attributes.public_golive_at, item.attributes.length)
-    );
-
-    const publicComboExists = await eventExists(
-      getCalendarId(),
-      getId(item.uuid)
-    );
-
-    if (!publicComboExists) {
-      const publicCombo = client.request({
-        method: 'POST',
-        url: comboUrl,
-        data: publicData
-      })
-      .then(() => log.info(
-        `Created public combo event: ${item.attributes.title}; ${item.attributes.channel_slug}`
-      ))
-      .catch(err => log.error({
-        message: 'Failed to create public combo event',
-        episodeTitle: item.attributes.title,
-        channel: item.attributes.channel_slug,
-        data: publicData,
-        error: err
-      }));
-
-      eventRequests.push(publicCombo);
+  let eventRequests = [
+    {
+      type: 'PUBLIC',
+      calendarType: 'ALL',
+      url: generalUrl
+    },
+    {
+      type: 'PUBLIC',
+      calendarType: 'CHANNEL',
+      url: channelUrl
+    },
+    {
+      type: 'SPONSOR',
+      calendarType: 'ALL',
+      url: generalUrl
+    },
+    {
+      type: 'SPONSOR',
+      calendarType: 'CHANNEL',
+      url: generalUrl
     }
+  ];
 
-    const publicChannelExists = await eventExists(
-      getCalendarId(item.attributes.channel_slug),
-      getId(item.uuid)
-    );
+  // first we filter out any events that are not necessary to create
+  eventRequests = eventRequests
+    .filter(async (event) => {
+      // we don't need to create public events if they're sponsor-only
+      if (event.type === 'PUBLIC' && is_sponsors_only) { return false; }
 
-    if (!publicChannelExists) {
-      const publicChannel = client.request({
-        method: 'POST',
-        url: channelUrl,
-        data: publicData
-      })
-      .then(() => log.info(
-        `Created public channel event: ${item.attributes.title}; ${item.attributes.channel_slug}`
-      ))
-      .catch(err => log.error({
-        message: 'Failed to create public channel event',
-        episodeTitle: item.attributes.title,
-        channel: item.attributes.channel_slug,
-        data: publicData,
-        error: err
-      }));
+      // if the sponsor video goes live at the same time as public and isn't sponsor-only,
+      // we can skip the sponsor event to avoid duplicates showing up in the calendar
+      if (event.type === 'SPONSOR' && (sponsor_golive_at === public_golive_at && !is_sponsors_only)) { return false; }
 
-      eventRequests.push(publicChannel);
-    }
-  }
+      return true;
+    });
 
-  if (item.attributes.sponsor_golive_at !== item.attributes.public_golive_at || item.attributes.is_sponsors_only) {
-    const sponsorData = Object.assign({},
-      defaultEventData(item, true),
-      getEventTimes(item.attributes.sponsor_golive_at, item.attributes.length)
-    );
+  // we check if the events already exist in Google calendar
+  const existingEvents = await Promise.all(eventRequests.map(event => {
+    const slug = event.type === 'PUBLIC' ? channel_slug : '';
+    return eventExists(getCalendarId(slug), getId(item.uuid)).catch(err => console.log(err));
+  }));
 
-    const sponsorComboExists = await eventExists(
-      getCalendarId(),
-      getId(item.uuid, true)
-    );
+  eventRequests = eventRequests
+    .filter((event, i) => {
+      // we only create an event if it doesn't exist already
+      return !existingEvents[i];
+    })
+    .map(event => {
+      // we map the event types to actual Google calendar event insertion requests
+      const startTime = event.type === 'PUBLIC' ? public_golive_at : sponsor_golive_at;
+      const isSponsor = event.type === 'SPONSOR';
 
-    if (!sponsorComboExists) {
-      const sponsorCombo = client.request({
-        method: 'POST',
-        url: comboUrl,
-        data: sponsorData
-      })
-      .then(() => log.info(
-        `Created sponsor combo event: ${item.attributes.title}; ${item.attributes.channel_slug}`
-      ))
-      .catch(err => log.error({
-        message: 'Failed to create sponsor combo event',
-        episodeTitle: item.attributes.title,
-        channel: item.attributes.channel_slug,
-        data: sponsorData,
-        error: err
-      }));
+      const eventData = Object.assign({},
+        defaultEventData(item, isSponsor),
+        getEventTimes(startTime, length)
+      );
 
-      eventRequests.push(sponsorCombo);
-    }
-
-    const sponsorChannelExists = await eventExists(
-      getCalendarId(item.attributes.channel_slug),
-      getId(item.uuid, true)
-    );
-
-    if (!sponsorChannelExists) {
-      const sponsorChannel = client.request({
-        method: 'POST',
-        url: channelUrl,
-        data: sponsorData
-      })
-      .then(() => log.info(
-        `Created sponsor channel event: ${item.attributes.title}; ${item.attributes.channel_slug}`
-      ))
-      .catch(err => log.error({
-        message: 'Failed to create sponsor channel event',
-        episodeTitle: item.attributes.title,
-        channel: item.attributes.channel_slug,
-        data: sponsorData,
-        error: err
-      }));
-
-      eventRequests.push(sponsorChannel);
-    }
-  }
+      return makeRequest({
+        eventType: `${event.type}_${event.calendarType}`,
+        data: eventData,
+        url: event.url
+      });
+    });
 
   return Promise.all(eventRequests);
 }
