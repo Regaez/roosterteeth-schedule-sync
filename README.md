@@ -14,7 +14,7 @@ The easiest way to add the environment variables is by creating a `.env` file in
 
 ```
 RT_API_URL=<<api url>>
-RT_EPISODE_URL=https://roosterteeth.com/episode
+RT_SITE_URL=https://roosterteeth.com
 CALENDAR_ALL=<<google calendar id>>
 CALENDAR_RT=<<google calendar id>>
 CALENDAR_AH=<<google calendar id>>

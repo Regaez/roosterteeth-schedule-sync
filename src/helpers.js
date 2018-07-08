@@ -35,10 +35,10 @@ const getCalendarId = (slug = "") => {
   }
 };
 
-const formatDescription = ({ show_title, display_title, channel_slug, slug, description, length }) => {
+const formatDescription = ({ show_title, display_title, channel_slug, description, length }, slug) => {
   const duration = moment.duration(length, 'seconds').humanize();
 
-  return `${getChannelName(channel_slug)}${show_title ? ": " + show_title : ''}\n${display_title}\nDuration: ${duration}\n\n${description}\n\nWatch video: ${process.env.RT_EPISODE_URL}/${slug}`;
+  return `${getChannelName(channel_slug)}${show_title ? ": " + show_title : ''}\n${display_title}\nDuration: ${duration}\n\n${description}\n\nWatch video: ${process.env.RT_SITE_URL}${slug}`;
 }
 
 const getId = (uuid, sponsor = false) => {
@@ -50,7 +50,7 @@ const defaultEventData = ({ uuid, attributes }, isSponsor) => {
   return {
     id: getId(uuid, isSponsor),
     summary: `${isSponsor?'FIRST: ':''}${attributes.show_title ? attributes.show_title + ' - ': ''}${attributes.title}`,
-    description: formatDescription(attributes),
+    description: formatDescription(attributes, item.canonical_links.self),
     transparency: 'transparent',
     guestsCanSeeOtherGuests: false
   }
