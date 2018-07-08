@@ -88,62 +88,65 @@ const createEvent = async (item) => {
   const channelUrl = `https://www.googleapis.com/calendar/v3/calendars/${getCalendarId(item.attributes.channel_slug)}/events`;
   const comboUrl = `https://www.googleapis.com/calendar/v3/calendars/${getCalendarId()}/events`;
 
-  const publicData = Object.assign({},
-    defaultEventData(item, false),
-    getEventTimes(item.attributes.public_golive_at, item.attributes.length)
-  );
+  if (!item.attributes.is_sponsors_only) {
 
-  const publicComboExists = await eventExists(
-    getCalendarId(),
-    getId(item.uuid)
-  );
+    const publicData = Object.assign({},
+      defaultEventData(item, false),
+      getEventTimes(item.attributes.public_golive_at, item.attributes.length)
+    );
 
-  if (!publicComboExists) {
-    const publicCombo = client.request({
-      method: 'POST',
-      url: comboUrl,
-      data: publicData
-    })
-    .then(() => log.info(
-      `Created public combo event: ${item.attributes.title}; ${item.attributes.channel_slug}`
-    ))
-    .catch(err => log.error({
-      message: 'Failed to create public combo event',
-      episodeTitle: item.attributes.title,
-      channel: item.attributes.channel_slug,
-      data: publicData,
-      error: err
-    }));
+    const publicComboExists = await eventExists(
+      getCalendarId(),
+      getId(item.uuid)
+    );
 
-    eventRequests.push(publicCombo);
+    if (!publicComboExists) {
+      const publicCombo = client.request({
+        method: 'POST',
+        url: comboUrl,
+        data: publicData
+      })
+      .then(() => log.info(
+        `Created public combo event: ${item.attributes.title}; ${item.attributes.channel_slug}`
+      ))
+      .catch(err => log.error({
+        message: 'Failed to create public combo event',
+        episodeTitle: item.attributes.title,
+        channel: item.attributes.channel_slug,
+        data: publicData,
+        error: err
+      }));
+
+      eventRequests.push(publicCombo);
+    }
+
+    const publicChannelExists = await eventExists(
+      getCalendarId(item.attributes.channel_slug),
+      getId(item.uuid)
+    );
+
+    if (!publicChannelExists) {
+      const publicChannel = client.request({
+        method: 'POST',
+        url: channelUrl,
+        data: publicData
+      })
+      .then(() => log.info(
+        `Created public channel event: ${item.attributes.title}; ${item.attributes.channel_slug}`
+      ))
+      .catch(err => log.error({
+        message: 'Failed to create public channel event',
+        episodeTitle: item.attributes.title,
+        channel: item.attributes.channel_slug,
+        data: publicData,
+        error: err
+      }));
+
+      eventRequests.push(publicChannel);
+    }
   }
 
-  const publicChannelExists = await eventExists(
-    getCalendarId(item.attributes.channel_slug),
-    getId(item.uuid)
-  );
-
-  if (!publicChannelExists) {
-    const publicChannel = client.request({
-      method: 'POST',
-      url: channelUrl,
-      data: publicData
-    })
-    .then(() => log.info(
-      `Created public channel event: ${item.attributes.title}; ${item.attributes.channel_slug}`
-    ))
-    .catch(err => log.error({
-      message: 'Failed to create public channel event',
-      episodeTitle: item.attributes.title,
-      channel: item.attributes.channel_slug,
-      data: publicData,
-      error: err
-    }));
-
-    eventRequests.push(publicChannel);
-  }
-
-  if (item.attributes.sponsor_golive_at !== item.attributes.public_golive_at) {
+  if (item.attributes.sponsor_golive_at !== item.attributes.public_golive_at || item.attributes.is_sponsors_only) {
     const sponsorData = Object.assign({},
       defaultEventData(item, true),
       getEventTimes(item.attributes.sponsor_golive_at, item.attributes.length)
