@@ -67,7 +67,7 @@ const createEvent = async (item) => {
 
   // first we filter out any events that are not necessary to create
   eventRequests = eventRequests
-    .filter(async (event) => {
+    .filter(event => {
       // we don't need to create public events if they're sponsor-only
       if (event.type === 'PUBLIC' && is_sponsors_only) { return false; }
 
