@@ -81,7 +81,8 @@ const createEvent = async (item) => {
   // we check if the events already exist in Google calendar
   const existingEvents = await Promise.all(eventRequests.map(event => {
     const slug = event.type === 'PUBLIC' ? channel_slug : '';
-    return eventExists(getCalendarId(slug), getId(item.uuid)).catch(err => console.log(err));
+    return eventExists(getCalendarId(slug), getId(item.uuid))
+      .catch(error => log.error({ message: `Failed to check event exists.`, error }));
   }));
 
   eventRequests = eventRequests
@@ -110,7 +111,7 @@ const createEvent = async (item) => {
 }
 
 const createEvents = async (schedules) => {
-  client = await getClient().catch(err => console.log(err));
+  client = await getClient().catch(error => log.error({ message: `Failed to get Google API client.`, error }));
   return Promise.all(schedules.map(createEvent));
 }
 
