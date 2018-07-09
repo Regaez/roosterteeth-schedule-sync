@@ -81,7 +81,8 @@ const createEvent = async (item) => {
   // we check if the events already exist in Google calendar
   const existingEvents = await Promise.all(eventRequests.map(event => {
     const slug = event.calendarType === 'CHANNEL' ? channel_slug : '';
-    return eventExists(getCalendarId(slug), getId(item.uuid))
+    const isSponsor = event.type === 'SPONSOR';
+    return eventExists(getCalendarId(slug), getId(item.uuid, isSponsor))
       .catch(error => log.error({ message: `Failed to check event exists.`, error }));
   }));
 
