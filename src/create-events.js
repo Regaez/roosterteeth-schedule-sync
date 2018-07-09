@@ -61,7 +61,7 @@ const createEvent = async (item) => {
     {
       type: 'SPONSOR',
       calendarType: 'CHANNEL',
-      url: generalUrl
+      url: channelUrl
     }
   ];
 
