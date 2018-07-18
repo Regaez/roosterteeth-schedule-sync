@@ -41,6 +41,10 @@ const formatDescription = ({ show_title, display_title, channel_slug, descriptio
   return `${getChannelName(channel_slug)}${show_title ? ": " + show_title : ''}\n${display_title}\nDuration: ${duration}\n\n${description}\n\nWatch video: ${process.env.RT_SITE_URL}${slug}`;
 }
 
+const formatLivestreamDescription = ({ title, channel_slug }, slug) => {
+  return `${getChannelName(channel_slug)}\n${title}\n\nWatch stream: ${process.env.RT_SITE_URL}${slug}`;
+}
+
 const getId = (uuid, sponsor = false) => {
   const id = sponsor ? uuid + 'sponsor' : uuid;
   return crypto.createHash('md5').update(id).digest('hex');
@@ -50,7 +54,17 @@ const defaultEventData = ({ uuid, attributes, canonical_links }, isSponsor) => {
   return {
     id: getId(uuid, isSponsor),
     summary: `${isSponsor?'FIRST: ':''}${attributes.show_title ? attributes.show_title + ' - ': ''}${attributes.title}`,
-    description: formatDescription(attributes, canonical_links.self),
+    description: formatLivestreamDescription(attributes, canonical_links.self),
+    transparency: 'transparent',
+    guestsCanSeeOtherGuests: false
+  }
+}
+
+const defaultLivestreamEventData = ({ uuid, attributes, canonical_links }, isSponsor) => {
+  return {
+    id: getId(uuid, isSponsor),
+    summary: `${isSponsor?'FIRST: ':''}LIVESTREAM - ${attributes.title}`,
+    description: formatLivestreamDescription(attributes, canonical_links.self),
     transparency: 'transparent',
     guestsCanSeeOtherGuests: false
   }
@@ -70,11 +84,24 @@ const getEventTimes = (timestamp, length) => {
   };
 };
 
+const getLivestreamEventTimes = (start, end) => {
+  return {
+    start: {
+      dateTime: start
+    },
+    end: {
+      dateTime: end
+    }
+  };
+};
+
 module.exports = {
   defaultEventData,
   formatDescription,
   getChannelName,
   getCalendarId,
   getEventTimes,
+  defaultLivestreamEventData,
+  getLivestreamEventTimes,
   getId
 }
