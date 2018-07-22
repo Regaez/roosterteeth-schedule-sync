@@ -54,7 +54,7 @@ const defaultEventData = ({ uuid, attributes, canonical_links }, isSponsor) => {
   return {
     id: getId(uuid, isSponsor),
     summary: `${isSponsor?'FIRST: ':''}${attributes.show_title ? attributes.show_title + ' - ': ''}${attributes.title}`,
-    description: formatLivestreamDescription(attributes, canonical_links.self),
+    description: formatDescription(attributes, canonical_links.self),
     transparency: 'transparent',
     guestsCanSeeOtherGuests: false
   }
