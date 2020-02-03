@@ -42,7 +42,7 @@ const formatDescription = ({ show_title, display_title, channel_slug, descriptio
 }
 
 const formatLivestreamDescription = ({ title, channel_slug }, slug) => {
-  return `${getChannelName(channel_slug)}\n${title}\n\nWatch stream: ${process.env.RT_SITE_URL}${slug}`;
+  return `${getChannelName(channel_slug)}\n${title}\n\nWatch stream: googlechrome://navigate?url=${process.env.RT_SITE_URL}${slug}`;
 }
 
 const getId = (uuid, sponsor = false) => {
