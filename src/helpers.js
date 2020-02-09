@@ -37,12 +37,13 @@ const getCalendarId = (slug = "") => {
 
 const formatDescription = ({ show_title, display_title, channel_slug, description, length }, slug) => {
   const duration = moment.duration(length, 'seconds').humanize();
+  const videoUrl = `${process.env.RT_SITE_URL}${slug}`;
 
-  return `${getChannelName(channel_slug)}${show_title ? ": " + show_title : ''}\n${display_title}\nDuration: ${duration}\n\n${description}\n\nWatch video: ${process.env.RT_SITE_URL}${slug}`;
+  return `${getChannelName(channel_slug)}${show_title ? ": " + show_title : ''}\n${display_title}\nDuration: ${duration}\n\n${description}\n\nWatch video: <a href="googlechrome://navigate?url=${videoUrl}>${videoUrl}</a>`;
 }
 
 const formatLivestreamDescription = ({ title, channel_slug }, slug) => {
-  return `${getChannelName(channel_slug)}\n${title}\n\nWatch stream: googlechrome://navigate?url=${process.env.RT_SITE_URL}${slug}`;
+  return `${getChannelName(channel_slug)}\n${title}\n\nWatch stream: ${process.env.RT_SITE_URL}${slug}`;
 }
 
 const getId = (uuid, sponsor = false) => {
