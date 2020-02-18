@@ -39,7 +39,7 @@ const formatDescription = ({ show_title, display_title, channel_slug, descriptio
   const duration = moment.duration(length, 'seconds').humanize();
   const videoUrl = `${process.env.RT_SITE_URL}${slug}`;
 
-  return `${getChannelName(channel_slug)}${show_title ? ": " + show_title : ''}\n${display_title}\nDuration: ${duration}\n\n${description}\n\nWatch video: <a href="googlechrome://navigate?url=${videoUrl}>${videoUrl}</a>`;
+  return `${getChannelName(channel_slug)}${show_title ? ": " + show_title : ''}\n${display_title}\nDuration: ${duration}\n\n${description}\n\nWatch video: googlechrome://navigate?url=${videoUrl}`;
 }
 
 const formatLivestreamDescription = ({ title, channel_slug }, slug) => {
